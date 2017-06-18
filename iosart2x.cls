@@ -57,8 +57,8 @@
 %%
 
 \def\fmt@name{iosart2x}
-\def\fmt@date{2017/04/06}
-\def\fmt@version{1.1.10}
+\def\fmt@date{2017/05/26}
+\def\fmt@version{1.1.13}
 \NeedsTeXFormat{LaTeX2e}[2000/01/26]
 \ProvidesClass\fmt@name
               [\fmt@date\space v\fmt@version\space IOS Press]
@@ -684,17 +684,9 @@
   \AtBeginDocument{\mandatory@open@access@option@error}%
 \fi
 
-\def\init@ios@journal@INF@settings{
-  \def\theaddress{\arabic{address}}
-  \def\@@copyrightowner{Vilnius University}
-  \def\@publisher{Vilnius University Institute of Mathematics and Informatics}
-  \def\@publisheraddress{Akademijos 4, LT-08663 Vilnius, Lithuania}
-}
-
 \def\init@ios@journal@ASY@settings{%
   \gappto\@articletype@prehook{\global\let\ios@pages@trimbox\ios@pages@trimbox@asy}%
-}
-
+  }
 \def\init@ios@journal@COM@settings{%
   \appto\before@printead@hook{%
     \let\ead@prefixsep\relax
@@ -708,9 +700,22 @@
     \let\ead@prefix@m@phone\relax
     }%
   }
-
 \def\init@ios@journal@DS@settings{%
   \def\bisbn##1{\href{http://www.isbnsearch.org/isbn/##1}{##1}}%
+  \let\review\dsreview
+  \let\endreview\enddsreview
+  }
+\def\init@ios@journal@INF@settings{
+  \def\theaddress{\arabic{address}}
+  \def\@@copyrightowner{Vilnius University}
+  \def\@publisher{Vilnius University Institute of Mathematics and Informatics}
+  \def\@publisheraddress{Akademijos 4, LT-08663 Vilnius, Lithuania}
+  }
+\def\init@ios@journal@SW@settings{%
+  \ifnum\jobstart@date@info>20170523\relax
+    \b@author@skip=-2\p@
+    \dsreview@postskip=6\p@
+  \fi
   }
 
 %************************* FONTS
@@ -1419,13 +1424,17 @@
   \protected@write\@auxout{}{\string\gdef\string\abbrgroup@labelwidth{\abbrgroup@@labelwidth}}%
   \endlist
 }
-\newcommand*\abbrgrouplabel[1]{\normalfont
+\newcommand*\abbrgrouplabel[1]{%
+  \normalfont
   \settowidth\@tempdima{#1}%
   \ifdim\@tempdima>\abbrgroup@@labelwidth
     \xdef\abbrgroup@@labelwidth{\the\@tempdima}%
   \fi
-#1%
-}
+  #1%
+  \ifnum\jobstart@date@info>20170424\relax
+    \hfill
+  \fi
+  }
 
 % list labels corrections
 \ifnum\ios@journal@layout>\z@
@@ -2159,7 +2168,12 @@
     \gdef\@pagerange{\special@supplement@letter\thefirstpage--\special@supplement@letter\thelastpage}
   \fi
   \thispagestyle{copyright}%
-  \if@preface \else\if@history \history@fmt\fi\fi
+  \if@preface
+  \else
+    \if@history
+      \history@fmt
+    \fi
+  \fi
   \newcount\c@sv@footnote
   \global\c@sv@footnote=\c@footnote
   \if@twocolumn\else\output@glob@notes\fi
@@ -2403,6 +2417,78 @@
   \reviewname@fmt{\reviewname}%
 }{\par\vskip\a@title@skip}
 
+\@namedef{ds@review@open@settings}{%
+  \xdef\reviewertype{reviewer}%
+  \ifnum\c@reviewauthor>\@ne
+    \xdef\reviewname{Open reviews}%
+  \else
+    \xdef\reviewname{Open review}%
+  \fi
+  }
+\@namedef{ds@review@solicited@settings}{%
+  \xdef\reviewertype{reviewer}%
+  \ifnum\c@reviewauthor>\@ne
+    \xdef\reviewname{Solicited reviews}%
+  \else
+    \xdef\reviewname{Solicited review}%
+  \fi
+  }
+\@namedef{ds@review@editor@settings}{%
+  \xdef\reviewertype{editor}%
+  \ifnum\c@reviewauthor>\@ne
+    \xdef\reviewname{Editors}%
+  \else
+    \xdef\reviewname{Editor}%
+  \fi
+  }
+
+\newtoks\dsreview@toks
+\newdimen\dsreview@preskip \dsreview@preskip=15.5\p@
+\newdimen\dsreview@postskip \dsreview@postskip=12\p@
+\def\count@reviewers#1{%
+  \setcounter{reviewauthor}{0}%
+  \setbox\z@=\vbox{#1}%
+  }
+\long\def\dsreview#1#2\end#3{%
+  \def\check@param@a{review}%
+  \def\check@param@b{#3}%
+  \ifx\check@param@a\check@param@b
+    \def\@next@{%
+      \global\dsreview@toks\expandafter{\the\dsreview@toks#2}%
+      %% review author setup
+      \let\author\review@author
+      \count@reviewers{\the\dsreview@toks}%
+      \ifnum\c@review=\z@
+        \vskip\dsreview@preskip
+      \else
+        \vskip-\dsreview@postskip
+      \fi
+      \stepcounter{review}%
+      \@nameuse{ds@review@#1@settings}%
+      \setcounter{reviewauthor}{0}%
+      \review@size
+      \csname begin@dsreview@hook\endcsname
+      \reviewname@fmt{\reviewname}%
+      \the\dsreview@toks
+      \global\dsreview@toks{}%
+      \par
+      \vskip\dsreview@postskip
+      \csname end@dsreview@hook\endcsname
+      \end{#3}%
+      }%
+  \else
+    \def\@next@{%
+      \global\dsreview@toks\expandafter{\the\dsreview@toks#2\end{#3}}%
+      \dsreview{#1}%
+      }%
+  \fi
+  \@next@
+  }
+\ifnum\jobstart@date@info>20170523\relax
+  \let\review\dsreview
+  \let\endreview\enddsreview
+\fi
+  
 \@ifundefined{short@journal}{\let\short@journal\@jid}{}
 
 \csuse{\fmt@name @vkt@cmn@fm@add}
